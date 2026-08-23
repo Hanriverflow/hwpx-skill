@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """report_placeholder_hook.py 스모크 테스트.
 
-'브라더 공기관' placeholder가 남은 보고서를 전달(open/Downloads 복사)하려 하면
+'〔기관명 입력〕' placeholder가 남은 보고서를 전달(open/Downloads 복사)하려 하면
 차단(exit 2)하고, placeholder 없는 파일·비전달 명령은 통과(exit 0)하는지 검증.
 
 사용법: python3 tests/test_report_placeholder_hook.py
@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 HOOK = ROOT / "scripts" / "report_placeholder_hook.py"
-DIRTY = ROOT / "assets" / "report-template.hwpx"      # '브라더 공기관' 포함
+DIRTY = ROOT / "assets" / "report-template.hwpx"      # 중립 기관명 placeholder 포함
 CLEAN = ROOT / "assets" / "gyehoek-reference.hwpx"     # placeholder 없음
 
 PASS, FAIL = 0, 0
@@ -37,9 +37,9 @@ def run(command):
 
 
 def main():
-    check("open 브라더 보고서 → 차단(exit 2)", run(f"open '{DIRTY}'") == 2)
+    check("open 기관명 미입력 보고서 → 차단(exit 2)", run(f"open '{DIRTY}'") == 2)
     check("open 깨끗한 파일 → 통과(exit 0)", run(f"open '{CLEAN}'") == 0)
-    check("cp 브라더 → Downloads → 차단(exit 2)",
+    check("cp 기관명 미입력 → Downloads → 차단(exit 2)",
           run(f"cp '{DIRTY}' ~/Downloads/report.hwpx") == 2)
     check("비전달 명령(파이프라인 실행) → 통과(exit 0)",
           run(f"python3 scripts/fill_hwpx.py analyze '{DIRTY}'") == 0)

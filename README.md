@@ -266,7 +266,7 @@ hwpx-skill/
 │   ├── fill_hwpx.py            # 보존형 양식 채우기 + 머리말/꼬리말/쪽번호/표구조/수식 in-place
 │   ├── secure_fill.py          # 개인정보(PII) 비경유 양식 채우기
 │   ├── hwpx_guard_hook.py      # 배포 전 HWPX strict gate 보조 훅
-│   ├── report_placeholder_hook.py # '브라더 공기관' 예시 보고서 전달 차단 훅
+│   ├── report_placeholder_hook.py # 기관명 미입력 보고서 전달 차단 훅
 │   ├── text_extract.py         # 텍스트 추출
 │   ├── create_document.py      # 문서 생성
 │   ├── build_problem_answer_sheet.py # 문제지+답안지 2쪽 생성

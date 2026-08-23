@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""PreToolUse 훅 — '브라더 공기관' 예시 보고서를 실제 보고서로 전달하는 것을 차단.
+"""PreToolUse 훅 — 기관명 미입력 보고서를 실제 보고서로 전달하는 것을 차단.
 
 `assets/report-template.hwpx`는 보고서 워크플로우의 베이스 템플릿이지만, 본문에
-'브라더 공기관'이라는 예시 기관명(스킬 원작자 placeholder)이 들어 있다. 이 문구를
+중립 플레이스홀더 '〔기관명 입력〕'이 들어 있다. 이 문구를
 실제 기관명으로 바꾸지 않은 채 사용자에게 전달(한컴으로 열기·Downloads/Desktop
-복사 등)하면 '브라더 공기관' 보고서가 그대로 나가는 사고가 난다.
+복사 등)하면 기관명이 비어 있는 보고서가 그대로 나가는 사고가 난다.
 
 이 훅은 Bash 도구로 .hwpx를 '전달'하는 명령을 가로채, 대상 파일 본문에 placeholder
 문구가 남아 있으면 차단(exit 2)하고, Claude가 그 사유를 보고 기관명을 먼저
-교체하도록 한다(fill_hwpx.py replace로 '브라더 공기관' → 실제 기관명).
+교체하도록 한다(fill_hwpx.py replace로 '〔기관명 입력〕' → 실제 기관명).
 
 placeholder가 없으면 조용히 통과(exit 0). '전달' 명령이 아니면 통과.
 템플릿을 작업용으로 복제(비-전달 경로)하는 것은 막지 않는다 — 채운 결과물에는
@@ -26,9 +26,8 @@ import re
 import sys
 import zipfile
 
-# report-template.hwpx의 예시 기관명. 실제 보고서엔 거의 나오지 않는 특정 문구라
-# 오탐 위험이 낮다. (단순 '브라더'는 실제 보고서 내용과 겹칠 수 있어 제외)
-PLACEHOLDER = "브라더 공기관"
+# report-template.hwpx의 중립 기관명 플레이스홀더.
+PLACEHOLDER = "〔기관명 입력〕"
 
 # .hwpx를 '전달'하는 명령으로 보는 패턴 — 이때만 검사 (생성/중간단계는 통과)
 DELIVERY_PATTERNS = [r"\bopen\b", r"\bcp\b", r"\bmv\b", r"\brsync\b", r"\bditto\b"]

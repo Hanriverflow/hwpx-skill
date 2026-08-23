@@ -37,7 +37,7 @@ ${CLAUDE_SKILL_DIR}/
 │   ├── bodojaryo.py           # ★ 정부 표준 보도자료 생성기 (레퍼런스 복제 방식)
 │   ├── gyehoek.py             # ★ 공공기관 계획서 생성기 (행안부 업무계획 복제, 제목/목차 토글)
 │   ├── gyehoek_hook.py        # ★ PreToolUse 훅 — 계획서 생성 전 제목/목차 포함 여부 강제 질문
-│   ├── report_placeholder_hook.py  # ★ PreToolUse 훅 — '브라더 공기관' 예시 보고서 전달 차단
+│   ├── report_placeholder_hook.py  # ★ PreToolUse 훅 — 기관명 미입력 보고서 전달 차단
 │   └── office/{unpack,pack}.py
 ├── templates/
 │   ├── base/                  # 베이스 Skeleton
@@ -839,7 +839,7 @@ python3 "${CLAUDE_SKILL_DIR}/scripts/fill_hwpx.py" check output.hwpx --strict
 스크립트 상단 주석 참조.
 
 `scripts/report_placeholder_hook.py`(PreToolUse, matcher: Bash)는 보고서 템플릿
-(`assets/report-template.hwpx`)의 예시 기관명 **'브라더 공기관'이 남은 .hwpx를 실제
+(`assets/report-template.hwpx`)의 중립 플레이스홀더 **'〔기관명 입력〕'이 남은 .hwpx를 실제
 보고서로 전달(open/Downloads·Desktop 복사)하려 하면 차단**한다. 이 placeholder는
 템플릿 구조 보존을 위해 파일에 남겨두되, 전달 전 반드시 `fill_hwpx.py replace`로 실제
 기관명으로 교체해야 한다(내부 작업용 복제는 막지 않음). 등록 방법은 스크립트 상단 주석 참조.
