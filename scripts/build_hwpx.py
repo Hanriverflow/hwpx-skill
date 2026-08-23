@@ -177,7 +177,8 @@ def _write_preview(work: Path) -> None:
     except Exception:  # noqa: BLE001
         return
     parts = [el.text for el in tree.iter()
-             if etree.QName(el).localname == "t" and el.text]
+             if isinstance(el.tag, str)
+             and etree.QName(el).localname == "t" and el.text]
     preview = "\n".join(parts).strip()
     if not preview:
         return
