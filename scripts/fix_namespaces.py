@@ -18,6 +18,7 @@ import zipfile
 import os
 import re
 import sys
+from atomic_io import replace_file
 
 
 def _fix_item_counts(header_xml):
@@ -43,7 +44,7 @@ def _fix_item_counts(header_xml):
     return header_xml
 
 
-def fix_hwpx_namespaces(hwpx_path):
+def fix_hwpx_namespaces(hwpx_path, *, strip_cached_lines=False):
     """
     HWPX 파일의 ns0:/ns1: 등 자동 생성 프리픽스를
     한컴오피스 표준 프리픽스(hh/hc/hp/hs)로 교체한다.
@@ -59,6 +60,7 @@ def fix_hwpx_namespaces(hwpx_path):
     }
 
     tmp_path = hwpx_path + ".tmp"
+    removed = 0
 
     with zipfile.ZipFile(hwpx_path, "r") as zin:
         with zipfile.ZipFile(tmp_path, "w", zipfile.ZIP_DEFLATED) as zout:
@@ -84,6 +86,10 @@ def fix_hwpx_namespaces(hwpx_path):
                         text = _fix_item_counts(text)
 
                     data = text.encode("utf-8")
+                    if strip_cached_lines:
+                        from finalize_hwpx import strip_linesegarray_from_bytes
+                        data, count = strip_linesegarray_from_bytes(data)
+                        removed += count
 
                 # mimetype은 반드시 ZIP_STORED로 유지
                 if item.filename == "mimetype":
@@ -91,7 +97,8 @@ def fix_hwpx_namespaces(hwpx_path):
                 else:
                     zout.writestr(item, data)
 
-    os.replace(tmp_path, hwpx_path)
+    replace_file(tmp_path, hwpx_path)
+    return removed
 
 
 if __name__ == "__main__":

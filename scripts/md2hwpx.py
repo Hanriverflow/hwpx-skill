@@ -26,6 +26,7 @@ Usage:
 from __future__ import annotations  # Python 3.9 호환: list[...] | None 등 어노테이션 지연 평가
 
 import argparse
+import math
 import re
 import subprocess
 import sys
@@ -185,6 +186,19 @@ class SectionBuilder:
     </hp:run>
   </hp:p>'''
 
+    def add_image(self, iid: str, source: Path):
+        from PIL import Image
+        from yoyak import pic
+        with Image.open(source) as im:
+            pw, ph = im.size
+            im.verify()
+        scale = min(75, 42520 / pw, 58000 / ph)
+        picture = pic(iid, round(pw * scale), round(ph * scale), "CENTER")
+        picture = re.sub(r'(?<![A-Za-z])(?:id|instid)="[^"]*"',
+                         lambda m: m[0].split("=")[0] + '="' + self._get_id() + '"', picture)
+        paragraph = self._make_para("", "body")
+        self.paragraphs.append(paragraph.replace("<hp:t></hp:t>", picture + "<hp:t/>"))
+
     def add_empty_line(self):
         """빈 줄 추가."""
         pid = self._get_id()
@@ -251,7 +265,9 @@ class SectionBuilder:
         pid = self._get_id()
         tbl_id = self._get_id()
 
-        total_height = row_height * num_rows
+        row_heights = [max(row_height, max((math.ceil(sum(1400 if ord(c) > 127 else 700 for c in value) / max(col_widths[i] - 680, 1)) * 1800 + 400
+                       for i, value in enumerate(row[:num_cols])), default=0)) for row in [headers] + rows]
+        total_height = sum(row_heights)
 
         def make_cell(text: str, is_header: bool, col_idx: int, row_idx: int) -> str:
             bf = "4" if is_header else "3"
@@ -259,7 +275,7 @@ class SectionBuilder:
             char_pr = cp["charPr"]
             para_pr = cp.get("paraPr", "0")
             cell_pid = self._get_id()
-            return f'''        <hp:tc name="" header="{1 if is_header else 0}" hasMargin="0" protect="0" editable="0" dirty="1" borderFillIDRef="{bf}">
+            return f'''        <hp:tc name="" header="{1 if is_header else 0}" hasMargin="1" protect="0" editable="0" dirty="1" borderFillIDRef="{bf}">
           <hp:subList id="" textDirection="HORIZONTAL" lineWrap="BREAK" vertAlign="CENTER" linkListIDRef="0" linkListNextIDRef="0" textWidth="0" textHeight="0" hasTextRef="0" hasNumRef="0">
             <hp:p paraPrIDRef="{para_pr}" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0" id="{cell_pid}">
               <hp:run charPrIDRef="{char_pr}"><hp:t>{xml_escape(text)}</hp:t></hp:run>
@@ -267,8 +283,8 @@ class SectionBuilder:
           </hp:subList>
           <hp:cellAddr colAddr="{col_idx}" rowAddr="{row_idx}"/>
           <hp:cellSpan colSpan="1" rowSpan="1"/>
-          <hp:cellSz width="{col_widths[col_idx]}" height="{row_height}"/>
-          <hp:cellMargin left="170" right="170" top="0" bottom="0"/>
+          <hp:cellSz width="{col_widths[col_idx]}" height="{row_heights[row_idx]}"/>
+          <hp:cellMargin left="340" right="340" top="140" bottom="140"/>
         </hp:tc>'''
 
         # 헤더 행
@@ -351,12 +367,8 @@ def parse_inline_bold(text: str) -> list[tuple[str, str]]:
 
 def strip_markdown_formatting(text: str) -> str:
     """인라인 마크다운 문법 제거 (볼드, 이탤릭, 링크 등)."""
-    text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
-    text = re.sub(r'\*(.+?)\*', r'\1', text)
-    text = re.sub(r'`(.+?)`', r'\1', text)
-    text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
-    text = re.sub(r'!\[([^\]]*)\]\([^)]+\)', r'[\1]', text)
-    return text
+    from document_model import display_text
+    return display_text(text)
 
 
 def parse_markdown_table(lines: list[str]) -> tuple[list[str], list[list[str]]]:
@@ -375,12 +387,14 @@ def parse_markdown_table(lines: list[str]) -> tuple[list[str], list[list[str]]]:
     return [strip_markdown_formatting(h) for h in headers], rows
 
 
-def md_to_section(md_text: str, template: str = "report") -> tuple[str, str]:
+def md_to_section(md_text: str, template: str = "report", *, base_dir: Path = Path("."), images: list | None = None) -> tuple[str, str]:
     """마크다운 텍스트를 section0.xml로 변환.
 
     Returns:
         (section_xml, title) 튜플
     """
+    from document_model import split_front_matter
+    _, md_text, _ = split_front_matter(md_text)
     profile = STYLE_PROFILES.get(template, STYLE_PROFILES["report"])
     builder = SectionBuilder(profile)
     lines = md_text.split('\n')
@@ -406,7 +420,7 @@ def md_to_section(md_text: str, template: str = "report") -> tuple[str, str]:
 
         # 수평선 (---)
         if re.match(r'^-{3,}$', stripped) or re.match(r'^\*{3,}$', stripped):
-            builder.add_empty_line()
+            builder.paragraphs.append(builder._make_para('', 'body').replace('pageBreak="0"', 'pageBreak="1"'))
             i += 1
             continue
 
@@ -492,11 +506,17 @@ def md_to_section(md_text: str, template: str = "report") -> tuple[str, str]:
                     builder.add_paragraph(cl if cl.strip() else " ", "small")
             continue
 
-        # 이미지 참조 (![alt](url)) - 텍스트로 변환
-        img_match = re.match(r'!\[([^\]]*)\]\(([^)]+)\)', stripped)
+        # Standalone images are real package assets, never substitute alt text.
+        img_match = re.fullmatch(r'!\[([^\]]*)\]\(([^)]+)\)', stripped)
         if img_match:
-            alt = img_match.group(1) or "이미지"
-            builder.add_paragraph(f"[{alt}]", "small")
+            if images is None:
+                raise ValueError("md_to_section: image collector required")
+            source = (base_dir / img_match[2].strip().strip("<>")).resolve()
+            if not source.is_file():
+                raise ValueError(f"image not found: {source}")
+            iid = f"markdownImage{len(images) + 1}"
+            builder.add_image(iid, source)
+            images.append((iid, source))
             i += 1
             continue
 
@@ -550,7 +570,8 @@ def main():
     print(f"입력: {args.input} ({len(md_text)} chars)")
 
     # 2. section0.xml 생성
-    section_xml, auto_title = md_to_section(md_text, args.template)
+    images = []
+    section_xml, auto_title = md_to_section(md_text, args.template, base_dir=args.input.parent, images=images)
     title = args.title or auto_title or args.input.stem
 
     # 3. 임시 section0.xml 저장
@@ -580,6 +601,9 @@ def main():
         print(f"ERROR: build_hwpx.py 실패:\n{result.stderr}", file=sys.stderr)
         section_path.unlink(missing_ok=True)
         sys.exit(1)
+
+    from package_assets import embed_images
+    embed_images(args.output, images)
 
     # 5. 네임스페이스 후처리
     if not args.no_fix_ns:

@@ -4,10 +4,37 @@
 [![GitHub release](https://img.shields.io/github/v/release/jkf87/hwpx-skill)](https://github.com/jkf87/hwpx-skill/releases)
 [![License](https://img.shields.io/github/license/jkf87/hwpx-skill)](LICENSE)
 
-HWP/HWPX 문서 변환·생성·읽기·편집을 위한 Claude 스킬. Windows에서는 설치된
+HWP/HWPX 문서 변환·생성·읽기·편집을 위한 AI 에이전트 스킬. Claude 및 Codex에서 사용하며, Windows에서는 설치된
 한컴오피스 저장 엔진으로 HWP를 빠르게 HWPX로 바꾼 뒤 후속 작업을 이어간다.
 
 > ⭐ **이 스킬이 도움이 되셨다면 [GitHub에서 Star](https://github.com/jkf87/hwpx-skill)를 눌러주세요!** 한글 문서 자동화가 필요한 다른 분들에게도 닿을 수 있게 도와주세요.
+
+## 원샷 고품질 생성
+
+새 공문·요약보고·기본계획·범용 문서는 버전이 있는 JSON 명세 하나로 생성부터
+품질 검증, 최종 저장까지 실행합니다. 실패한 후보 파일은 출력 경로에 공개하지 않으며,
+같은 환경·명세·고정 자원에서는 같은 HWPX 바이트를 검사합니다. 정적 통과와 실제 페이지 검토는 별개입니다.
+
+```bash
+python scripts/one_shot.py --example official-letter
+python scripts/one_shot.py --example diagram
+python scripts/one_shot.py spec.json --report quality.json
+```
+
+지원 유형은 `official-letter`, `brief-report`, `plan-report`, `markdown`입니다.
+v1 원고/공문 입력과 v2 의미 블록·사실 계약·편집 가능한 표 도식을 지원합니다.
+계약은 `schemas/one-shot.schema.json`, 설명은 `references/one-shot.md`에 있습니다.
+실제 페이지는 `render_hwpx.py`로 한컴 PDF/PNG를 생성해 확인합니다. 모델 간 품질 일관성은 별도 실측이 필요합니다.
+
+## 아스트라(Astra) 지원
+
+Codex에서 아스트라(`gpt-6-astra`)를 이용한 보고서 집필·표 도식 설계·원문 대조를 지원합니다.
+Astra(xhigh)의 상세 보고서 제작과 Luna 집필 코칭 사례를 바탕으로
+[원문 보존형 상세 보고서 지침](references/source-report.md), 코드·로그 보존 조립기,
+선택형 `technical-report` 조판을 제공합니다.
+
+사용자가 지정한 모델·추론 설정을 존중하며 Astra로 자동 전환하거나 모델 API를 직접 호출하지 않습니다.
+Astra와 Luna는 같은 입력 계약과 검사 경로를 사용하되, 모델 간 품질 동등성을 보장하지 않습니다.
 
 ## 치환 게이트 (v1.10.0)
 
@@ -44,6 +71,9 @@ python3 scripts/map_preflight.py residue out.hwpx --against base.hwpx
 ```bash
 # 기본 의존성
 pip install python-hwpx lxml --break-system-packages
+
+# 원샷 v1/v2 생성·계약 검사 (Windows 한컴 연결 포함)
+pip install -r requirements-one-shot.txt
 
 # HWP→HWPX 변환 (워크플로우 H)
 # Windows 우선 경로: 한컴오피스 한글 + HwpAutomation 파일 경로 보안 모듈

@@ -9,11 +9,12 @@
 import json
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
+from neutral_report_fixture import build_report
 
 ROOT = Path(__file__).resolve().parent.parent
 HOOK = ROOT / "scripts" / "report_placeholder_hook.py"
-DIRTY = ROOT / "assets" / "report-template.hwpx"      # 중립 기관명 placeholder 포함
 CLEAN = ROOT / "assets" / "gyehoek-reference.hwpx"     # placeholder 없음
 
 PASS, FAIL = 0, 0
@@ -36,7 +37,7 @@ def run(command):
     return r.returncode
 
 
-def main():
+def check_commands(DIRTY):
     check("open 기관명 미입력 보고서 → 차단(exit 2)", run(f"open '{DIRTY}'") == 2)
     check("open 깨끗한 파일 → 통과(exit 0)", run(f"open '{CLEAN}'") == 0)
     check("cp 기관명 미입력 → Downloads → 차단(exit 2)",
@@ -54,6 +55,11 @@ def main():
 
     print(f"\n{PASS} passed, {FAIL} failed")
     return 1 if FAIL else 0
+
+
+def main():
+    with tempfile.TemporaryDirectory() as td:
+        return check_commands(build_report(Path(td) / "dirty.hwpx", placeholder=True))
 
 
 if __name__ == "__main__":

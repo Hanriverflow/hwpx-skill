@@ -918,12 +918,10 @@ def convert(
 ) -> tuple[Path, Path]:
     output_hwpx.parent.mkdir(parents=True, exist_ok=True)
     # 스타일 원본은 기존 활동지 양식(문제지·답안지 레퍼런스)의 header 를 쓴다.
-    # 예전에는 templates/government/header.xml 을 썼으나, 관공서 템플릿을
-    # 제거하면서 같은 글꼴(맑은 고딕)을 가진 활동지 자산으로 옮겼다.
     worksheet_ref = SKILL_DIR / "assets" / "problem-answer-reference.hwpx"
     reference_hwpx = SKILL_DIR / "assets" / "gyehoek-reference.hwpx"
     if not reference_hwpx.is_file():
-        reference_hwpx = SKILL_DIR / "assets" / "report-template.hwpx"
+        reference_hwpx = worksheet_ref
 
     temp_context = tempfile.TemporaryDirectory(prefix="html2hwpx-") if keep_xml is None else None
     work = Path(temp_context.name) if temp_context else keep_xml

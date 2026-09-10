@@ -9,11 +9,11 @@ import sys
 import tempfile
 import zipfile
 from pathlib import Path
+from neutral_report_fixture import build_report
 
 ROOT = Path(__file__).resolve().parent.parent
 FILL = ROOT / "scripts" / "fill_hwpx.py"
 MD2 = ROOT / "scripts" / "md2hwpx.py"
-REPORT = ROOT / "assets" / "report-template.hwpx"   # 실제 한컴 저장본(제목+표)
 
 PASS, FAIL = 0, 0
 
@@ -46,10 +46,11 @@ def crcs(p):
 def main():
     with tempfile.TemporaryDirectory() as td:
         d = Path(td)
+        report = build_report(d / "report.hwpx")
 
         # ── in-place: 남색 테마 ──
         navy = d / "navy.hwpx"
-        code, rep = run("set-theme", REPORT, navy, "--theme", "남색")
+        code, rep = run("set-theme", report, navy, "--theme", "남색")
         check("set-theme 남색 성공", code == 0 and rep and rep["ok"])
         check("제목 charPr recolor(>0) + 표머리 색칠(>0)",
               rep and rep["headings_recolored"] > 0
@@ -57,7 +58,7 @@ def main():
         h = hx(navy, "Contents/header.xml")
         check("헤더에 남색 #1F3864", "#1F3864" in h)
         check("표머리 배경 #D6DCE5", "#D6DCE5" in h)
-        b, n = crcs(REPORT), crcs(navy)
+        b, n = crcs(report), crcs(navy)
         changed = sorted(k for k in b if b[k] != n.get(k))
         check("header+section만 변경",
               changed == ["Contents/header.xml", "Contents/section0.xml"]
@@ -67,14 +68,14 @@ def main():
 
         # ── override 색 ──
         ov = d / "ov.hwpx"
-        code, rep = run("set-theme", REPORT, ov, "--heading-color", "FF0000",
+        code, rep = run("set-theme", report, ov, "--heading-color", "FF0000",
                         "--table-header-color", "FFFF00")
         check("override 색 적용",
               code == 0 and "#FF0000" in hx(ov, "Contents/header.xml")
               and "#FFFF00" in hx(ov, "Contents/header.xml"))
 
         # ── 잘못된 테마 거부 ──
-        code, _ = run("set-theme", REPORT, d / "x.hwpx", "--theme", "없는테마",
+        code, _ = run("set-theme", report, d / "x.hwpx", "--theme", "없는테마",
                       expect=1)
         check("잘못된 테마 거부(exit 1)", code == 1)
 

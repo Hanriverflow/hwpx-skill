@@ -117,16 +117,9 @@ CONTENT_MIME = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"
 # 마크다운 파서
 # ═══════════════════════════════════════════════════════════════════════
 def parse_front_matter(text: str) -> tuple[dict, str]:
-    """`--- … ---` 사이의 `키: 값`. 없으면 빈 dict."""
-    m = re.match(r"\s*---\n(.*?)\n---\n?(.*)$", text, re.S)
-    if not m:
-        return {}, text
-    meta = {}
-    for line in m.group(1).splitlines():
-        if ":" in line and not line.startswith(" "):
-            k, v = line.split(":", 1)
-            meta[k.strip()] = v.strip()
-    return meta, m.group(2)
+    from document_model import split_front_matter
+    meta, body, _ = split_front_matter(text)
+    return meta, body
 
 
 def parse_approvers(s: str) -> list[dict]:
@@ -176,6 +169,8 @@ def parse_body(text: str) -> tuple[str, list]:
                 i += 1
             blocks.append(("table", rows))
             continue
+        elif s == "---":
+            blocks.append(("pagebreak",))
         elif IMAGE.match(line):
             m = IMAGE.match(line)
             blocks.append(("image", m.group(1), m.group(2)))
@@ -426,8 +421,9 @@ def build_section(meta: dict, title: str, blocks: list, images: list) -> str:
         left = pic(iid, w, LOGO_H)
     else:
         left = f'<hp:t>{xml_escape(meta.get("기관", ""))}</hp:t>'
+    approval = approval_table(meta.get("보고일", ""), approvers) if meta.get("보고일") or approvers else ""
     head_run = (f'<hp:run charPrIDRef="{CP_ORG}">{left}<hp:t> </hp:t>'
-                f'{approval_table(meta.get("보고일", ""), approvers)}<hp:t/></hp:run>')
+                f'{approval}<hp:t/></hp:run>')
     P.append(f'<hp:p id="{next_id()}" paraPrIDRef="{PP_HEAD}" styleIDRef="0" pageBreak="0" '
              f'columnBreak="0" merged="0"><hp:run charPrIDRef="{CP_BODY}">{sec_pr()}{col_pr()}</hp:run>'
              f'{head_run}</hp:p>')
@@ -457,6 +453,8 @@ def build_section(meta: dict, title: str, blocks: list, images: list) -> str:
             P.append(text_para(PP_BODY, CP_BODY, b[1]))
         elif t == "table":
             P.append(content_table(b[1]))
+        elif t == "pagebreak":
+            P.append(para(PP_PLAIN, f'<hp:run charPrIDRef="{CP_BODY}"><hp:t/></hp:run>').replace('pageBreak="0"', 'pageBreak="1"'))
         elif t == "image":
             ip = Path(b[2])
             if not ip.is_absolute():
@@ -528,24 +526,32 @@ def write_hwpx(out: Path, header: str, section: str, title: str, images: list, d
 
 
 def _iso_date(s: str) -> str:
-    m = re.search(r"(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})", s or "")
+    m = re.search(r"(\d{4})[.-]\s*(\d{1,2})[.-]\s*(\d{1,2})", s or "")
     if m:
         return f"{m[1]}-{int(m[2]):02d}-{int(m[3]):02d}T00:00:00Z"
     return "2000-01-01T00:00:00Z"
 
 
-def generate(md_path: Path, out: Path) -> Path:
-    text = md_path.read_text(encoding="utf-8")
+def generate_text(text: str, out: Path, *, base_dir: Path = Path("."), metadata_date: str | None = None) -> Path:
+    """Generate from in-memory Markdown while resolving images from base_dir."""
     meta, body = parse_front_matter(text)
-    meta["_base"] = md_path.parent
+    meta["_base"] = Path(base_dir)
     title, blocks = parse_body(body)
     if not title:
         raise SystemExit("제목이 없다 — `# 제목` 줄을 넣어라")
     images: list = []
     section = build_section(meta, title, blocks, images)
     header = patched_header(int(meta.get("줄간격") or LINE_SPACING))
-    write_hwpx(out, header, section, title, images, meta.get("보고일", ""))
+    write_hwpx(out, header, section, title, images, metadata_date or meta.get("보고일", ""))
     return out
+
+
+def generate(md_path: Path, out: Path) -> Path:
+    return generate_text(
+        md_path.read_text(encoding="utf-8"),
+        out,
+        base_dir=md_path.parent,
+    )
 
 
 SAMPLE = """---

@@ -1,4 +1,5 @@
 import importlib.util
+import shutil
 import sys
 import tempfile
 import unittest
@@ -23,6 +24,23 @@ def load_module():
 
 
 class HtmlToHwpxTest(unittest.TestCase):
+    def test_missing_plan_reference_uses_active_worksheet(self):
+        module = load_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            assets = directory / "assets"
+            assets.mkdir()
+            shutil.copyfile(ROOT / "assets/problem-answer-reference.hwpx",
+                            assets / "problem-answer-reference.hwpx")
+            module.SKILL_DIR = directory
+            output = directory / "fallback.hwpx"
+            module.convert(FIXTURE, output, creator="test")
+            with zipfile.ZipFile(output) as archive:
+                section = archive.read("Contents/section0.xml").decode("utf-8")
+            self.assertIn("기후 변화 탐구 활동지", section)
+            self.assertNotIn("체육건강안전과", section)
+            self.assertNotIn("〔기관명 입력〕", section)
+
     def test_parse_components(self):
         module = load_module()
         plan = module.parse_html(FIXTURE)

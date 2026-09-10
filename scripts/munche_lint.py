@@ -13,6 +13,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from document_model import split_front_matter
 
 # 추상어·가치어 — 'A가 아니라 B' 의 B 가 이런 말이면 수사다
 ABSTRACT = ("사람", "마음", "본질", "전환", "방법", "태도", "문화", "철학", "가치", "정신",
@@ -56,14 +57,9 @@ NOT_A_BUT = re.compile(r"(가|이|은|는) 아니라\s*([^,\.\s]{1,12})|(가|이
 
 def lint(text: str) -> dict:
     findings = []
-    in_front = False
+    _, body_text, offset = split_front_matter(text)
     _lead_buf: list = []
-    for no, raw in enumerate(text.splitlines(), 1):
-        if raw.strip() == "---":
-            in_front = not in_front if no < 40 else in_front
-            continue
-        if in_front:
-            continue
+    for no, raw in enumerate(body_text.splitlines(), offset + 1):
         kind, body = classify(raw)
         if kind in (None, "skip", "head"):
             continue

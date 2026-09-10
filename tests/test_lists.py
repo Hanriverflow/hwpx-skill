@@ -17,7 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 FILL = ROOT / "scripts" / "fill_hwpx.py"
 BUILD = Path(__file__).resolve().parent / "build_test_form.py"
-ASSET = ROOT / "assets" / "report-template.hwpx"
+ASSET = ROOT / "assets" / "gyehoek-reference.hwpx"
 
 PASS, FAIL = 0, 0
 

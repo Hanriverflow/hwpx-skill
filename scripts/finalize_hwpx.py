@@ -90,7 +90,7 @@ def _text_of(elem: etree._Element) -> str:
 
 
 def _paragraph_texts(elem: etree._Element) -> list[str]:
-    return [_text_of(p).strip() for p in elem.xpath("./hp:p", namespaces=NS)]
+    return [_text_of(p).strip() for p in elem.xpath("./hp:subList/hp:p", namespaces=NS)]
 
 
 def _cell_addr(tc: etree._Element) -> tuple[int, int]:
@@ -121,7 +121,10 @@ def _is_heading(text: str) -> bool:
     if not text:
         return False
     return bool(
-        re.match(r"^(\[|【|▶|\d+[.)]\s|[가-힣][.)]\s|[A-Z][.)]\s|[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+[.)]\s)", text)
+        # Korean-letter prefixes (가./나.) are sub-items in official documents,
+        # not headings.  Treating them as headings produced a false warning on
+        # the following sender/footer paragraph.
+        re.match(r"^(\[|【|▶|\d+[.)]\s|[A-Z][.)]\s|[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+[.)]\s)", text)
         or len(text) <= 18 and text.endswith(":")
     )
 
@@ -142,7 +145,8 @@ def find_layout_warnings(
     layout review or template-specific row height adjustments.
     """
 
-    warnings: list[dict[str, Any]] = []
+    from package_inspection import inspect_package
+    warnings: list[dict[str, Any]] = inspect_package(Path(hwpx_path))["layout"]["warnings"]
 
     with zipfile.ZipFile(hwpx_path, "r") as zf:
         section_names = [
@@ -152,61 +156,6 @@ def find_layout_warnings(
 
         for section_name in section_names:
             root = etree.fromstring(zf.read(section_name))
-
-            # Table density checks.
-            for table_index, tbl in enumerate(root.xpath(".//hp:tbl", namespaces=NS), start=1):
-                for tc in tbl.xpath(".//hp:tc", namespaces=NS):
-                    row, col = _cell_addr(tc)
-                    width, height = _cell_size(tc)
-                    paras = [p for p in _paragraph_texts(tc) if p]
-                    if not paras:
-                        continue
-
-                    text = " ".join(paras)
-                    longest_para = max((_weighted_len(p) for p in paras), default=0)
-                    estimated_lines = max(1, math.ceil(_weighted_len(text) / 80))
-
-                    if len(paras) == 1 and longest_para > max_cell_paragraph_chars:
-                        warnings.append({
-                            "type": "long_single_paragraph_cell",
-                            "section": section_name,
-                            "table": table_index,
-                            "row": row,
-                            "col": col,
-                            "height": height,
-                            "message": (
-                                "Long table-cell text is in one paragraph; split it into "
-                                "multiple paragraphs/list items before relying on wrapping."
-                            ),
-                            "sample": text[:120],
-                        })
-
-                    if (longest_para > max_cell_paragraph_chars or estimated_lines >= 3) and height < min_long_cell_height:
-                        warnings.append({
-                            "type": "short_row_for_long_cell",
-                            "section": section_name,
-                            "table": table_index,
-                            "row": row,
-                            "col": col,
-                            "height": height,
-                            "message": (
-                                "Table row height is likely too small for the amount of text; "
-                                "increase every cell height in the row and update table hp:sz height."
-                            ),
-                            "sample": text[:120],
-                        })
-
-                    if len(paras) >= 3 and height < min_long_cell_height:
-                        warnings.append({
-                            "type": "multi_paragraph_short_cell",
-                            "section": section_name,
-                            "table": table_index,
-                            "row": row,
-                            "col": col,
-                            "height": height,
-                            "message": "Multi-paragraph cell has a short row height.",
-                            "sample": text[:120],
-                        })
 
             # Visible indentation checks for top-level paragraphs after headings.
             top_paras = root.xpath("./hp:p[not(.//hp:tbl)]", namespaces=NS)
@@ -232,37 +181,10 @@ def find_layout_warnings(
 
 
 def hancom_open_check(hwpx_path: str | Path, *, visible: bool = False) -> tuple[bool, str]:
-    """Try to open the HWPX file with Hancom Office through Windows COM."""
-
-    if os.name != "nt":
-        return False, "Hancom COM validation is only available on Windows."
-
-    try:
-        import win32com.client  # type: ignore
-    except ImportError:
-        return False, "pywin32 is not installed; install pywin32 to use --hancom."
-
-    hwp = None
-    try:
-        hwp = win32com.client.Dispatch("HWPFrame.HwpObject")
-        try:
-            hwp.XHwpWindows.Item(0).Visible = visible
-        except Exception:
-            pass
-        try:
-            hwp.RegisterModule("FilePathCheckDLL", "FilePathCheckerModule")
-        except Exception:
-            pass
-        ok = bool(hwp.Open(str(Path(hwpx_path).resolve()), "", ""))
-        return (ok, "Hancom Open returned True." if ok else "Hancom Open returned False.")
-    except Exception as exc:  # pragma: no cover - requires Hancom/COM
-        return False, f"Hancom COM open failed: {exc}"
-    finally:
-        if hwp is not None:
-            try:
-                hwp.Quit()
-            except Exception:
-                pass
+    """Bounded independent worker; visible is retained for API compatibility."""
+    from hancom_worker import run_hancom
+    result = run_hancom(Path(hwpx_path))
+    return result["ok"], result["message"]
 
 
 def main() -> None:

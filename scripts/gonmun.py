@@ -319,16 +319,22 @@ def build_section(meta):
     P.append(_empty())
     P.append(_p(PP_CENTER, [(CP_SENDER, g("발신명의"))]))
     P.append(_empty())
-    P.append(_rule(PP_RULE_BLACK if g("결문선") == "검정" else PP_RULE_GRAY))
     결재 = _decisions(meta)
+    footer_keys = ("협조자", "시행", "접수", "우편번호", "주소", "홈페이지", "전화번호", "팩스번호", "이메일", "공개구분")
+    if 결재 or any(g(key) for key in footer_keys):
+        P.append(_rule(PP_RULE_BLACK if g("결문선") == "검정" else PP_RULE_GRAY))
     if 결재:
         P.append(_gyeoljae_table(결재))
-    P.append(_p(PP_FOOT, [(CP_FOOT, f"협조자 {g('협조자')}".rstrip())]))
-    P.append(_p(PP_FOOT, [(CP_FOOT, f"시행  {g('시행')}        접수  {g('접수')}")]))
-    P.append(_p(PP_FOOT, [(CP_FOOT, f"우 {g('우편번호')}  {g('주소')}      /  {g('홈페이지')}")]))
-    P.append(_p(PP_FOOT, [(CP_FOOT,
-              f"전화번호 {g('전화번호')}      팩스번호 {g('팩스번호')}"
-              f"      /  {g('이메일')}      /  {g('공개구분')}")]))
+    if g("협조자"):
+        P.append(_p(PP_FOOT, [(CP_FOOT, f"협조자 {g('협조자')}".rstrip())]))
+    if g("시행") or g("접수"):
+        P.append(_p(PP_FOOT, [(CP_FOOT, f"시행  {g('시행')}        접수  {g('접수')}")]))
+    if any(g(key) for key in ("우편번호", "주소", "홈페이지")):
+        P.append(_p(PP_FOOT, [(CP_FOOT, f"우 {g('우편번호')}  {g('주소')}      /  {g('홈페이지')}")]))
+    if any(g(key) for key in ("전화번호", "팩스번호", "이메일", "공개구분")):
+        P.append(_p(PP_FOOT, [(CP_FOOT,
+                  f"전화번호 {g('전화번호')}      팩스번호 {g('팩스번호')}"
+                  f"      /  {g('이메일')}      /  {g('공개구분')}")]))
 
     P.append("</hs:sec>")
     return "\n".join(P)
@@ -373,15 +379,17 @@ def _header_for(meta, output):
     return tmp, tmp
 
 
-def generate(meta, output):
+def generate(meta, output, *, env=None):
     section_xml = build_section(meta)
     tmp_sec = Path(output).with_suffix(".section.tmp.xml")
     tmp_sec.write_text(section_xml, encoding="utf-8")
     header, tmp_hdr = _header_for(meta, output)
     subprocess.run([sys.executable, str(SKILL_DIR / "scripts/build_hwpx.py"),
                     "--header", str(header), "--section", str(tmp_sec),
-                    "--title", meta.get("제목", "기안문"), "--output", str(output)], check=True)
-    subprocess.run([sys.executable, str(SKILL_DIR / "scripts/fix_namespaces.py"), str(output)], check=True)
+                    "--title", meta.get("제목", "기안문"), "--output", str(output)],
+                   check=True, capture_output=True, env=env)
+    subprocess.run([sys.executable, str(SKILL_DIR / "scripts/fix_namespaces.py"), str(output)],
+                   check=True, capture_output=True, env=env)
     set_prvtext(output)
     tmp_sec.unlink(missing_ok=True)
     if tmp_hdr:

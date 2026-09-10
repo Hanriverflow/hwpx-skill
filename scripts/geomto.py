@@ -215,7 +215,7 @@ def chapter_banner(n: int, title: str) -> str:
            cell(1, 0, CHAP_GAP_W, CHAP_H, BF_NONE, [text_para(PP_NUMERAL, CP_BODY, "")]),
            cell(2, 0, w_title, CHAP_H, BF_CHAP_TITLE, [para(PP_CHAP, runs(title, CP_CHAP))])]
     tbl = table([f'<hp:tr>{"".join(tcs)}</hp:tr>'], 1, 3, BODY_W, CHAP_H, BF_NONE,
-                outmargin=(141, 141, 0, 0))
+                outmargin=(141, 141, 0, 200))
     return para(PP_PLAIN, f'<hp:run charPrIDRef="{CP_BODY}">{tbl}</hp:run>')
 
 
@@ -371,18 +371,26 @@ def build_section(meta: dict, title: str, blocks: list, images: list) -> str:
     return "\n".join(P)
 
 
-def generate(md_path: Path, out: Path) -> Path:
-    text = md_path.read_text(encoding="utf-8")
+def generate_text(text: str, out: Path, *, base_dir: Path = Path("."), metadata_date: str | None = None) -> Path:
+    """Generate from in-memory Markdown while resolving images from base_dir."""
     meta, body = parse_front_matter(text)
-    meta["_base"] = md_path.parent
+    meta["_base"] = Path(base_dir)
     title, blocks = parse_body(body)
     if not title:
         raise SystemExit("제목이 없다 — `# 제목` 줄을 넣어라")
     images: list = []
     section = build_section(meta, title, blocks, images)
     header = yoyak.patched_header(int(meta.get("줄간격") or LINE_SPACING), HEADER, LINE_SPACING, LS_PARAS)
-    write_hwpx(out, header, section, title, images, meta.get("작성", "") or meta.get("결재일자", ""))
+    write_hwpx(out, header, section, title, images, metadata_date or meta.get("작성", "") or meta.get("결재일자", ""))
     return out
+
+
+def generate(md_path: Path, out: Path) -> Path:
+    return generate_text(
+        md_path.read_text(encoding="utf-8"),
+        out,
+        base_dir=md_path.parent,
+    )
 
 
 SAMPLE = """---

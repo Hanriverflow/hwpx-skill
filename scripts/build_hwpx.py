@@ -29,12 +29,13 @@ Usage:
 from __future__ import annotations  # Python 3.9 호환: str | None 등 어노테이션 지연 평가
 
 import argparse
+import os
 import shutil
 import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
+from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile, ZipInfo
 
 from lxml import etree
 
@@ -60,7 +61,7 @@ def validate_xml(filepath: Path) -> None:
         raise SystemExit(f"Malformed XML in {filepath.name}: {e}")
 
 
-def update_metadata(content_hpf: Path, title: str | None, creator: str | None) -> None:
+def update_metadata(content_hpf: Path, title: str | None, creator: str | None, metadata_date: str | None = None) -> None:
     """Update title and/or creator in content.hpf."""
     if not title and not creator:
         return
@@ -74,7 +75,14 @@ def update_metadata(content_hpf: Path, title: str | None, creator: str | None) -
         if title_el is not None:
             title_el.text = title
 
-    now = datetime.now(timezone.utc)
+    source_epoch = os.environ.get("SOURCE_DATE_EPOCH")
+    now = (
+        datetime.fromtimestamp(int(source_epoch), timezone.utc)
+        if source_epoch is not None
+        else datetime.now(timezone.utc)
+    )
+    if metadata_date is not None:
+        now = datetime.fromisoformat(metadata_date).replace(tzinfo=timezone.utc)
     iso_now = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     for meta in root.findall(".//opf:meta", ns):
@@ -111,12 +119,15 @@ def pack_hwpx(input_dir: Path, output_path: Path) -> None:
         if p.is_file()
     )
 
+    # HWPX output must not depend on temporary-file mtimes.  A fixed ZIP epoch
+    # gives byte-identical packages for identical inputs on every platform.
     with ZipFile(output_path, "w", ZIP_DEFLATED) as zf:
-        zf.write(mimetype_file, "mimetype", compress_type=ZIP_STORED)
-        for rel_path in all_files:
-            if rel_path == "mimetype":
-                continue
-            zf.write(input_dir / rel_path, rel_path, compress_type=ZIP_DEFLATED)
+        ordered = ["mimetype"] + [name for name in all_files if name != "mimetype"]
+        for rel_path in ordered:
+            info = ZipInfo(rel_path, (1980, 1, 1, 0, 0, 0))
+            info.compress_type = ZIP_STORED if rel_path == "mimetype" else ZIP_DEFLATED
+            info.external_attr = 0o100644 << 16
+            zf.writestr(info, (input_dir / rel_path).read_bytes())
 
 
 def validate_hwpx(hwpx_path: Path) -> list[str]:
@@ -194,6 +205,7 @@ def build(
     title: str | None,
     creator: str | None,
     output: Path,
+    metadata_date: str | None = None,
 ) -> None:
     """Main build logic."""
 
@@ -231,7 +243,7 @@ def build(
             shutil.copy2(section_override, work / "Contents" / "section0.xml")
 
         # 4. Update metadata
-        update_metadata(work / "Contents" / "content.hpf", title, creator)
+        update_metadata(work / "Contents" / "content.hpf", title, creator, metadata_date)
 
         # 5. Validate all XML files
         for xml_file in work.rglob("*.xml"):

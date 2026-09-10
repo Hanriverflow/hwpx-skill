@@ -109,10 +109,11 @@ with tempfile.TemporaryDirectory() as d:
     geomto.generate(d / "s.md", d / "b.hwpx")
     check("같은 입력 → 같은 바이트", hashlib.md5((d / "a.hwpx").read_bytes()).hexdigest()
           == hashlib.md5((d / "b.hwpx").read_bytes()).hexdigest())
-    z = zipfile.ZipFile(d / "a.hwpx")
-    check("모든 엔트리 시각 1980-01-01", all(i.date_time[:3] == (1980, 1, 1) for i in z.infolist()))
-    s = z.read("Contents/section0.xml").decode()
-    h = z.read("Contents/header.xml").decode()
+    with zipfile.ZipFile(d / "a.hwpx") as z:
+        check("모든 엔트리 시각 1980-01-01", all(i.date_time[:3] == (1980, 1, 1) for i in z.infolist()))
+        s = z.read("Contents/section0.xml").decode()
+        h = z.read("Contents/header.xml").decode()
+        hpf = z.read("Contents/content.hpf").decode()
     used = lambda k: set(re.findall(k + r'IDRef="(\d+)"', s))
     dfn = lambda k: set(re.findall(r"<hh:" + k + r' id="(\d+)"', h))
     check("미정의 스타일 ID 없음", not (used("charPr") - dfn("charPr")) and not (used("paraPr") - dfn("paraPr"))
@@ -123,10 +124,11 @@ with tempfile.TemporaryDirectory() as d:
               and w not in ("문서번호", "보존기간", "결재일자", "공개여부")]
     check("본문 한글 낱말이 전부 샘플에서 온 것(템플릿 삽입 글자는 표지 라벨 4개뿐)", not _alien, str(_alien[:5]))
     check("한컴 붙여넣기 그림 이름(CLP…) 없음", "CLP0" not in s)
-    check("날짜 메타 = 작성일", "2026-08-21T00:00:00Z" in z.read("Contents/content.hpf").decode())
+    check("날짜 메타 = 작성일", "2026-08-21T00:00:00Z" in hpf)
     (d / "ls.md").write_text("---\n줄간격: 150\n---\n# 제목\n## 장\n- 항목\n", encoding="utf-8")
     geomto.generate(d / "ls.md", d / "ls.hwpx")
-    hh = zipfile.ZipFile(d / "ls.hwpx").read("Contents/header.xml").decode()
+    with zipfile.ZipFile(d / "ls.hwpx") as zls:
+        hh = zls.read("Contents/header.xml").decode()
     check("줄간격 150 → 본문 paraPr 에 반영, 원본 템플릿 불변",
           re.search(r'<hh:paraPr id="%s".*?value="150"' % geomto.PP_ITEM, hh, re.S) is not None
           and f'value="{geomto.LINE_SPACING}"' in parapr(geomto.PP_ITEM))

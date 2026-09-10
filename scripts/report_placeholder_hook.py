@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """PreToolUse 훅 — 기관명 미입력 보고서를 실제 보고서로 전달하는 것을 차단.
 
-`assets/report-template.hwpx`는 보고서 워크플로우의 베이스 템플릿이지만, 본문에
-중립 플레이스홀더 '〔기관명 입력〕'이 들어 있다. 이 문구를
+사용자 양식의 본문에 중립 플레이스홀더 '〔기관명 입력〕'이 남을 수 있다. 이 문구를
 실제 기관명으로 바꾸지 않은 채 사용자에게 전달(한컴으로 열기·Downloads/Desktop
 복사 등)하면 기관명이 비어 있는 보고서가 그대로 나가는 사고가 난다.
 
@@ -26,7 +25,7 @@ import re
 import sys
 import zipfile
 
-# report-template.hwpx의 중립 기관명 플레이스홀더.
+# 미입력 기관명 플레이스홀더. 특정 내장 양식에 의존하지 않는다.
 PLACEHOLDER = "〔기관명 입력〕"
 
 # .hwpx를 '전달'하는 명령으로 보는 패턴 — 이때만 검사 (생성/중간단계는 통과)
@@ -89,7 +88,7 @@ def main():
     base = os.path.basename(target)
     sys.stderr.write(
         "[report-placeholder] 차단: " + base + " 에 예시 기관명 '"
-        + PLACEHOLDER + "'(report-template.hwpx placeholder)이 남아 있습니다.\n"
+        + PLACEHOLDER + "'이 남아 있습니다.\n"
         "실제 보고서로 전달하기 전에 기관명을 교체하세요:\n"
         "  python3 ${CLAUDE_SKILL_DIR}/scripts/fill_hwpx.py replace "
         + base + " out.hwpx --map map.json\n"
