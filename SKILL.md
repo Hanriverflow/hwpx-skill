@@ -14,6 +14,7 @@ description: "한글 HWP/HWPX 파일의 변환·읽기·편집과 편집 가능�
 1. 사용자 요청의 사실·필수 조건·미확정 사항을 정리한다. 기관명·연도·장소·문서번호 등을 추측하지 않는다.
    - 문서에 필요하지만 미정인 사실과, 요청상 생략하는 항목은 다르다. 일반 지식 보고서에 기관·작성일을 쓰지 않는다는 이유만으로 unknowns나 초안 표시를 만들지 않는다.
 2. 아래 문서 유형을 고르고 실행 가능한 예시와 스키마를 확인한다.
+   - 실제 공문 PDF·이미지·HWPX를 주며 그 양식을 따르라고 하거나 기존 결과의 공문다움을 지적하면, 빌드 전에 [reference-official-letter.md](references/reference-official-letter.md)를 읽는다. 내장 공문 양식 선택만으로 참고 양식을 반영했다고 판단하지 않는다.
 3. 기본 문서는 v1 Markdown/공문 JSON을 사용한다. 사실 계약·표 도식·기관별 표현이 필요하면 v2의 의미 블록을 사용한다. 모델이 XML이나 셀 좌표를 작성할 필요는 없다.
    - 공문 키는 예시의 `기관명`, `수신`, `제목`, `발신명의`, `body`를 그대로 사용한다. 영문 별칭을 추측하지 않는다.
    - 절차도·흐름도·추진체계도 요청은 `diagram` 블록과 `visual-elements.md`로 연결한다. 단계가 나열된 일반 데이터 표만으로 도식 요청을 충족했다고 판단하지 않는다.
@@ -107,7 +108,8 @@ python scripts/finalize_hwpx.py output.hwpx --hancom
 | 범용 보고서 | [report-style.md](references/report-style.md) |
 | HTML 활동지 | `html2hwpx.py`, [html-to-hwpx.md](references/html-to-hwpx.md) |
 | 복잡한 양식·표·각주·수식·직인·원본 편집 | [advanced-workflows.md](references/advanced-workflows.md)의 해당 워크플로우 |
-| 레퍼런스 재현 | `doc_spec.py`, 고급 참고서 워크플로우 R |
+| 실제 공문 양식 재현·재작성 | [reference-official-letter.md](references/reference-official-letter.md) — 참고 양식과 내용 출처 분리, 실측·대조 |
+| HWPX 레퍼런스 재현 | `doc_spec.py`, 고급 참고서 워크플로우 R (`analyze`에 PDF·이미지를 직접 넣지 않음) |
 | 읽기·텍스트 추출 | `text_extract.py`, 고급 참고서 워크플로우 E |
 
 `doc_spec.py render`는 HWPX 조립이며 페이지 렌더러가 아니다. 필요한 참고서를 더 읽는 횟수를 제한하지 않는다. 일반 새 문서에는 이 메인 경로가 과거 고급 예제보다 우선한다.

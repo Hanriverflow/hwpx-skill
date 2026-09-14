@@ -716,6 +716,8 @@ python3 "${CLAUDE_SKILL_DIR}/scripts/fill_hwpx.py" fill form.hwpx out.hwpx --cel
 
 ## 워크플로우 R: 문서 재현 (레퍼런스 분석 → 새 내용 조판) ★★
 
+실제 공문 PDF·이미지를 따른 재작성은 먼저 [reference-official-letter.md](reference-official-letter.md)를 읽는다. 아래 `doc_spec.py analyze`는 HWPX 전용이며 PDF·이미지 분석이나 페이지 렌더를 대신하지 않는다.
+
 > **레퍼런스 문서 한 편을 주면 그 편집 규범을 뽑아, 새 내용을 같은 규범으로
 > 조판한다.** 복제 후 치환(Workflow F)과 달리 **내용 길이가 원본과 달라도
 > 레이아웃이 어긋나지 않는다.**
@@ -1168,6 +1170,8 @@ LLM 이 잘 빠지는 버릇을 잡는다: `~해야 현장에 남는다`(서술�
 대조), `가르치는 일은 사람이, 반복되는 일은 AI가`(대구 슬로건), `— 설명`(줄표 덧붙임).
 
 ## 워크플로우 G: 공문서 작성법 준수 (2025 개정) ★
+
+사용자가 실제 공문 양식을 지정했다면 [reference-official-letter.md](reference-official-letter.md)의 양식 분석·대조를 이 경로와 함께 수행한다. 아래 생성기의 기본값은 지정 양식의 시각 검증을 대체하지 않는다.
 
 > **공문서(기안문) 본문 작성 시 2025 개정 공문서 작성법을 자동 적용.**
 > 공문서 HWPX 생성(Workflow A/B/F)과 결합하여 사용하거나, 기존 공문서 텍스트 검수에 단독 사용.

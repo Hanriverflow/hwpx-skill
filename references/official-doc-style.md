@@ -7,6 +7,8 @@
 > (두문·본문·결문 + 맑은 고딕 11.5pt, gonmun2025 템플릿). 샘플: `--sample`.
 > **작성법 자동 검수**: `python3 scripts/gonmun_lint.py --hwpx 문서.hwpx --format text`.
 
+> **사용자 제공 실제 양식이 있을 때**: 먼저 [reference-official-letter.md](reference-official-letter.md)를 읽는다. 아래 내장 기본값만 적용하는 것은 참고 양식 재현이 아니다. 기업 공문에 정부 양식을 참고하는 경우 발신자 신분·결재자·직인까지 복제하지 않는다.
+
 ## 1. 용지 및 여백
 
 ### 1-1. 용지 규격
