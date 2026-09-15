@@ -36,6 +36,7 @@ python scripts/one_shot.py /absolute/path/spec.json --report /absolute/path/qual
 | `official-letter` | `document` 객체. 시행 공문·기안문, 붙임 안내·결재 필드 |
 | `brief-report` | Markdown 또는 v2 블록. 결재선·제목 띠가 있는 요약보고 |
 | `plan-report` | Markdown 또는 v2 블록. 장 배너·선택적 표지가 있는 계획·검토보고 |
+| `research-plan` | 연구학교 연구계획서 완본(28쪽, 표지·실태분석·SWOT·추진체계도 도식·실행계획 표). `scripts/research_plan.py`로 복제·생성 |
 | `markdown` | 범용 보고서·회의록·제안서. `template` 스타일 선택 가능 |
 
 입력·결과 계약은 [one-shot.md](references/one-shot.md), v2 표 도식과 이미지 경로는 [visual-elements.md](references/visual-elements.md)를 읽는다. 예시는 가상 검증 자료이며 실제 기관 정보가 아니다.
@@ -57,21 +58,19 @@ python scripts/one_shot.py /absolute/path/spec.json --report /absolute/path/qual
 - 문체는 기관별 선택이다. v1은 기존 엄격 정책을 유지한다. v2 보고서는 기본 advisory이며 `quality.writing`으로 required/advisory/off를 명시할 수 있다. 파일·사실 검사는 이 선택으로 해제되지 않는다.
 - 내장 양식은 현재 경로만 사용한다. 폐기된 브라더 보고서 및 교육청 체육과 양식을 백업·과거 배포본에서 자동 복원하지 않는다. 사용자가 특정 원본을 명시적으로 제공한 편집 작업은 별개다.
 
-## 실제 페이지 확인
+## 실제 페이지 확인 및 Visual QA
 
 ```text
-python scripts/render_hwpx.py /absolute/path/output.hwpx --output-dir /absolute/path/new-empty-review-folder
+python scripts/render_hwpx.py /absolute/path/output.hwpx --output-dir /absolute/path/new-empty-review-folder --expected-pages 1
 ```
 
-독립 한컴 인스턴스에서 열고 PDF로 내보낸 뒤 Poppler로 PNG를 만든다. 새롭거나 빈 출력 폴더를 사용한다. 모든 페이지의 제목 계층, 잘림·겹침, 연결 라벨, 표 분할, 불필요한 빈 페이지를 확인한다. 긴 라벨은 내용을 삭제하기보다 배치·방향·칸 크기를 조정하고 다시 검증한다.
+독립 한컴 인스턴스에서 열고 PDF 및 PNG로 내보낸다(Poppler가 없어도 한컴 네이티브 기능으로 자동 내보냄). 모든 페이지의 제목 계층, 잘림·겹침, 연결 라벨, 표 분할, 불필요한 빈 페이지를 `view_file`로 직접 시각 검토(Visual QA)한다. 긴 라벨은 내용을 삭제하기보다 배치·방향·칸 크기를 조정하고 다시 검증한다.
 
-마지막 쪽에 짧은 문단 하나만 밀려났다면 빈 쪽이 아니어도 조판 개선 대상으로 본다. 먼저 표 열 구성·단락 간격·명시적 쪽 나눔을 검토한다. 사실 삭제나 무조건적인 글자 축소로 맞추지 않는다.
+- **페이지 밀림/폭발 방지**: 양식 원본의 빈 셀에 설정된 큰 `cellSz/@height`(예: 20000~30000 HWPUNIT)는 글자가 들어가면 페이지가 밀리는 주원인이다. 본문이 채워지는 셀의 높이는 1000 이하로 리셋하여 내용량에 맞게 자동 확장(auto-grow)되도록 조정한다.
+- **불필요한 빈 문단 삭제**: 표 내부나 섹션의 잔여 빈 문단(`<hp:p>`)을 정리하고 줄간격(`lineSpacing`)을 130% 수준으로 조판한다.
+- **사용자가 쪽 수를 지정한 경우**: `--expected-pages N`을 반드시 주어 실제 쪽 수가 불일치하면 즉시 실패 처리되도록 한다.
 
-사용자가 쪽 수를 지정했다면 렌더 명령에 `--expected-pages 1`처럼 함께 전달한다. 실제 PNG 쪽 수가 다르면 렌더 자체가 성공해도 페이지 조건은 실패다. 이 옵션 없이 1쪽 조건까지 검사했다고 쓰지 않는다.
-
-한컴·pywin32·Poppler가 없거나 시간 초과이면 미수행/실패를 그대로 보고한다. `quality.hancom: off`는 검사가 통과했다는 뜻이 아니다. 그림이 필요한 경우 [visual-elements.md](references/visual-elements.md)의 imagegen 분기를 따른다.
-
-## 기존 파일
+## 기존 파일 및 양식 처리
 
 원본을 받으면 원본 보존 편집을 우선한다. 비대상 ZIP 엔트리·본문·그림을 보존한다.
 
@@ -81,9 +80,12 @@ python scripts/convert_hwp.py input.hwp -o converted.hwpx
 python scripts/fill_hwpx.py analyze form.hwpx
 python scripts/fill_hwpx.py fill form.hwpx filled.hwpx --values values.json
 python scripts/fill_hwpx.py check filled.hwpx --strict
+python scripts/research_plan.py --school "○○초등학교" --title "○○ 연구과제" -o 연구계획서.hwpx
 ```
 
-변환은 Windows 한컴 경로를 우선하고, 사용할 수 없으면 내장 변환기를 검토한다. 채움 키는 analyze 결과를 사용한다. 명령 출력이 JSON이라고 `--json` 같은 옵션을 추측해 추가하지 않는다.
+- **HWP 변환 원칙 (중요)**: Windows 한컴 환경에서는 반드시 한컴 COM(`convert_hwp_hancom.ps1` 또는 Python `win32com.client` 기반 `SaveAs(..., "HWPX")`)을 최우선으로 사용한다. 파이썬 내장 변환기(`convert_hwp.py`)는 복잡한 표/글상자가 포함된 HWP 문서 변환 시 한컴오피스에서 열리지 않는 비표준 HWPX를 생성할 수 있다.
+- **텍스트 겹침 방지 (`linesegarray` 필수 제거)**: 한컴이 생성한 HWPX에는 이전 줄바꿈 좌표 캐시인 `<hp:linesegarray>`가 포함되어 있다. 텍스트를 교체/추가할 때 이를 제거하지 않으면 글자가 한 줄에 겹쳐서 출력되는 심각한 버그가 발생한다. 편집 후 반드시 전수 제거한다.
+- **문단 전체 치환**: 문단 텍스트 교체 시 일부 `run/t`만 바꾸면 잔여 텍스트와 합쳐져 중복 표기되므로, 기존 `run`과 `linesegarray`를 비우고 단일 `run/t`를 새로 생성한다.
 
 원샷 밖에서 생성·수정했다면 전달 전 다음 검사와 페이지 검토를 수행한다.
 

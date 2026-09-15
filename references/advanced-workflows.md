@@ -36,6 +36,7 @@ ${CLAUDE_SKILL_DIR}/
 │   ├── munche_lint.py         # ★ 개조식 보고서 원고 문체 검문기 (서술형 종결·수사적 대조·길이·표기) (Workflow Y)
 │   ├── bodojaryo.py           # ★ 정부 표준 보도자료 생성기 (레퍼런스 복제 방식)
 │   ├── gyehoek.py             # ★ 공공기관 계획서 생성기 (행안부 업무계획 복제, 제목/목차 토글)
+│   ├── research_plan.py       # ★ 교육부·교육청 연구학교 연구계획서 완본(28쪽) 생성기 (Workflow R)
 │   ├── gyehoek_hook.py        # ★ PreToolUse 훅 — 계획서 생성 전 제목/목차 포함 여부 강제 질문
 │   ├── report_placeholder_hook.py  # ★ PreToolUse 훅 — 기관명 미입력 보고서 전달 차단
 │   └── office/{unpack,pack}.py
@@ -50,6 +51,7 @@ ${CLAUDE_SKILL_DIR}/
 │   ├── proposal/              # 제안서
 ├── assets/
 │   ├── gyehoek-reference.hwpx       # ★ 공공기관 계획서 기본양식(행안부 2025 업무계획) — gyehoek.py가 복제
+│   ├── research-school-plan-reference.hwpx # ★ 교육부·교육청 상설연구학교 연구계획서 기본양식(28쪽 완본) — research_plan.py가 복제
 │   ├── bodojaryo-reference.hwpx     # ★ 정부 표준 보도자료 양식(고정) — bodojaryo.py가 복제
 │   └── problem-answer-reference.hwpx
 └── references/
@@ -127,6 +129,7 @@ Rules:
  ├─ "공문 작성해줘/공문서 검수해줘" → 워크플로우 G (공문서 작성법 준수) ★
  ├─ "요약보고/약식보고/단장님·부시장님 보고용 한 장" (결재선 + □❍- 개조식) → 워크플로우 Y (yoyak) ★
  ├─ "기본계획/검토보고/검토서 만들어줘" (Ⅰ Ⅱ Ⅲ 장 배너, 표지·결재란 선택) → 워크플로우 Y (geomto) ★
+ ├─ "연구계획서/연구학교 계획서/학교 운영계획서 만들어줘" → 워크플로우 R (research_plan) ★
  ├─ "문제지 한장 답안지 한장", "문제지+답안지", "정답지 포함 활동지" → 워크플로우 I ★
  ├─ "HTML 디자인을 HWPX로", "K-Teacher 스타일", "컬러 활동지" → 워크플로우 K ★
  └─ "HWPX 읽어줘" → 워크플로우 E (읽기/추출)
@@ -170,6 +173,28 @@ Rules:
 > **반드시 할 것:**
 > - `clone_form.py`의 `clone()` 함수 또는 ZIP-level 문자열 치환 사용
 > - 치환은 `str.replace()` 기반으로 XML 구조를 건드리지 않음
+
+---
+
+## 워크플로우 R: 교육부·교육청 연구학교 연구계획서 생성
+
+> 교육부·교육청 상설연구학교 연구계획서 양식(`assets/research-school-plan-reference.hwpx`)을 복제하여 28쪽 분량의 완결된 고품질 연구계획서를 생성한다.
+> 표지, 목차, 연구의 필요성 및 목적, 실태 분석 표, SWOT 분석 도식, 연구 과제 설계 추진체계도 도식, 연차별 연구 흐름도, 과제별 상세 실행계획 표가 모두 포함되어 있다.
+
+### 사용 명령
+
+```bash
+# 특정 학교명과 연구 주제로 연구계획서 생성
+python3 scripts/research_plan.py --school "한국초등학교" --title "창의융합 미래역량 함양을 위한 맞춤형 교육과정" --year "2026" -o 연구계획서.hwpx
+
+# 기본 샘플 연구계획서 복제 생성
+python3 scripts/research_plan.py --sample -o 2026_상설연구학교_연구계획서.hwpx
+```
+
+### 특징 및 구조 보존
+- **28쪽 완본 구조**: 표지, 목차, Ⅰ~Ⅵ장 전 장의 표와 도식을 100% 보존.
+- **깨짐 없는 고해상도 도식 내장**: 11쪽 추진체계도 도식(기획총괄/조정, 자문 및 행·재정지원, 컨설팅지원, 3개 분과) 및 9쪽 SWOT 분석 도식이 인라인 고해상도 그래픽으로 내장되어 한글 버전이나 프린터 환경에 구애받지 않고 깨지지 않음.
+- **라인 레이아웃 캐시 정리**: `hp:linesegarray` 자동 제거로 텍스트 겹침 버그 사전 차단.
 
 ---
 
